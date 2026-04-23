@@ -690,9 +690,7 @@ document.getElementById('file-input').addEventListener('change', e => {
   if (e.target.files[0]) definirArquivo(e.target.files[0]);
 });
 
-zona.addEventListener('click', e => {
-  if (e.target.tagName !== 'BUTTON') return;
-});
+// Event listener removido - causava problema ao clicar no botão
 
 function definirArquivo(f) {
   arquivoAtual = f;
