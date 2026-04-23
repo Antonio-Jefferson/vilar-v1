@@ -59,11 +59,15 @@ class Handler(BaseHTTPRequestHandler):
                 print(f'[API] Recebido PDF de {content_length} bytes')
 
                 # Extrai texto
-                texto = extrair_texto_pdf(body)
+                texto, erro = extrair_texto_pdf(body)
                 print(f'[API] Texto extraído: {len(texto)} caracteres')
 
                 if not texto.strip():
-                    resposta = {'erro': 'Não foi possível extrair texto do PDF'}
+                    if erro:
+                        msg = f'Erro ao extrair texto: {erro}'
+                    else:
+                        msg = 'PDF vazio ou sem texto extraível (pode ser um PDF com imagem/scanned). Certifique-se de usar um PDF com texto digital.'
+                    resposta = {'erro': msg}
                     self.send_json(400, resposta)
                     return
 

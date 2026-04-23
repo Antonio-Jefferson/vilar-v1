@@ -342,7 +342,7 @@ def verificar_item(texto_norm: str, palavras_grupos: list) -> bool:
     return False
 
 
-def extrair_texto_pdf(conteudo_bytes: bytes) -> str:
+def extrair_texto_pdf(conteudo_bytes: bytes) -> tuple[str, str]:
     try:
         import fitz
         doc = fitz.open(stream=conteudo_bytes, filetype="pdf")
@@ -350,19 +350,44 @@ def extrair_texto_pdf(conteudo_bytes: bytes) -> str:
         for pagina in doc:
             partes.append(pagina.get_text())
         doc.close()
-        return "\n".join(partes)
-    except ImportError:
-        try:
-            import pypdf
-            reader = pypdf.PdfReader(stream=conteudo_bytes)
-            partes = []
-            for page in reader.pages:
-                partes.append(page.extract_text())
-            return "\n".join(partes)
-        except:
-            return ""
+        texto = "\n".join(partes)
+        if texto.strip():
+            return texto, None
+    except ImportError as e:
+        pass
     except Exception as e:
-        return ""
+        pass
+
+    try:
+        import pypdf
+        reader = pypdf.PdfReader(stream=conteudo_bytes)
+        partes = []
+        for page in reader.pages:
+            partes.append(page.extract_text())
+        texto = "\n".join(partes)
+        if texto.strip():
+            return texto, None
+    except Exception as e:
+        pass
+
+    try:
+        import pdf2image
+        import pytesseract
+        from io import BytesIO
+
+        images = pdf2image.convert_from_bytes(conteudo_bytes)
+        partes = []
+        for img in images:
+            texto_ocr = pytesseract.image_to_string(img, lang='por')
+            partes.append(texto_ocr)
+        texto = "\n".join(partes)
+        if texto.strip():
+            return texto, None
+        return "", "OCR não encontrou texto no PDF"
+    except ImportError:
+        return "", "Instale: pip install pdf2image pytesseract. Também instale tesseract-ocr: apt-get install tesseract-ocr"
+    except Exception as e:
+        return "", f"OCR error: {str(e)}"
 
 
 def analisar(texto: str) -> dict:

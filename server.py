@@ -18,12 +18,17 @@ class APIHandler(SimpleHTTPRequestHandler):
 
                 # Extrai texto do PDF
                 if body[:4] == b'%PDF':
-                    texto = extrair_texto_pdf(body)
+                    texto, erro = extrair_texto_pdf(body)
                 else:
                     texto = body.decode('utf-8', errors='ignore')
+                    erro = None
 
                 if not texto.strip():
-                    self._responder(400, {'erro': 'Não foi possível extrair texto do PDF.'})
+                    if erro:
+                        msg = f'Erro ao extrair texto: {erro}'
+                    else:
+                        msg = 'PDF vazio ou sem texto extraível (pode ser um PDF com imagem/scanned). Certifique-se de usar um PDF com texto digital.'
+                    self._responder(400, {'erro': msg})
                     return
 
                 resultado = analisar(texto)
