@@ -1,0 +1,11 @@
+venv/
+.git/
+__pycache__/
+*.pyc
+.env
+.env.local
+dev-server.py
+server.py
+server-simples.py
+run-server.sh
+.claude/
