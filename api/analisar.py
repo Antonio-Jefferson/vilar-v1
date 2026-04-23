@@ -19,6 +19,8 @@ CHECKLIST = [
             ["certidao de conclusao"],
             ["conclusao de curso"],
             ["universidade", "curso de"],
+            ["diploma de graduacao"],
+            ["certificado de conclusao"],
         ],
     },
     {
@@ -30,12 +32,15 @@ CHECKLIST = [
             ["carteira de identidade"],
             ["registro geral"],
             ["carteira nacional de habilitacao"],
+            ["cnh"],
             ["passaporte"],
             ["carteira de trabalho"],
             ["ctps"],
             ["secretaria de seguranca publica"],
             ["instituto de identificacao"],
             ["delegacia geral de policia civil"],
+            ["documento de identidade"],
+            ["rg numero"],
         ],
     },
     {
@@ -49,6 +54,9 @@ CHECKLIST = [
             ["receita federal", "cpf"],
             ["situacao cadastral", "regular"],
             ["ministerio da fazenda", "cpf"],
+            ["cpf", "inscrito"],
+            ["numero do cpf"],
+            ["cadastro de pessoa fisica"],
         ],
     },
     {
@@ -62,6 +70,9 @@ CHECKLIST = [
             ["extrato previdenciario"],
             ["instituto nacional do seguro social"],
             ["inss", "nit"],
+            ["pis", "pasep"],
+            ["e-social"],
+            ["numero de inscricao social"],
         ],
     },
     {
@@ -76,6 +87,8 @@ CHECKLIST = [
             ["tribunal superior eleitoral", "quite"],
             ["situacao inscricao", "regular"],
             ["justica eleitoral", "certidao"],
+            ["eleitor", "numero do titulo"],
+            ["certidao de quitacao"],
         ],
     },
     {
@@ -87,6 +100,8 @@ CHECKLIST = [
             ["banco do brasil"],
             ["conta salario", "banco do brasil"],
             ["extrato", "banco do brasil"],
+            ["bb", "conta corrente"],
+            ["agencia", "banco do brasil"],
         ],
     },
     {
@@ -101,6 +116,8 @@ CHECKLIST = [
             ["perfeito estado de saude"],
             ["apto", "exercicio"],
             ["hospital", "atesto"],
+            ["medico responsavel"],
+            ["apto para exercer"],
         ],
     },
     {
@@ -117,6 +134,7 @@ CHECKLIST = [
             ["caema"],
             ["distribuidora de energia"],
             ["nota fiscal", "energia eletrica"],
+            ["agua e esgoto"],
         ],
     },
     {
@@ -335,11 +353,56 @@ def normalizar(texto: str) -> str:
     return sem_acento.lower()
 
 
-def verificar_item(texto_norm: str, palavras_grupos: list) -> bool:
+def verificar_item(texto_norm: str, palavras_grupos: list) -> tuple[bool, int]:
+    max_score = 0
+    encontrado = False
+
     for grupo in palavras_grupos:
         if all(normalizar(p) in texto_norm for p in grupo):
-            return True
-    return False
+            encontrado = True
+            score = min(100, 50 + (len(grupo) * 15))
+            max_score = max(max_score, score)
+
+    if encontrado:
+        return True, max_score
+
+    for grupo in palavras_grupos:
+        matches = sum(1 for p in grupo if normalizar(p) in texto_norm)
+        if matches > 0:
+            score = int((matches / len(grupo)) * 70)
+            max_score = max(max_score, score)
+
+    if max_score > 0:
+        return False, max_score
+
+    return False, 0
+
+
+def processar_imagem_ocr(imagem):
+    """Melhora qualidade da imagem antes de OCR"""
+    try:
+        import cv2
+        import numpy as np
+
+        nparr = np.frombuffer(imagem, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if img is None:
+            return imagem
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        enhanced = clahe.apply(gray)
+
+        _, thresh = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2,2))
+        cleaned = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+
+        return cleaned
+    except:
+        return imagem
 
 
 def extrair_texto_pdf(conteudo_bytes: bytes) -> tuple[str, str]:
@@ -394,71 +457,42 @@ def analisar(texto: str) -> dict:
     texto_norm = normalizar(texto)
     encontrados = []
     faltando = []
+    incertos = []
 
     for item in CHECKLIST:
-        achado = verificar_item(texto_norm, item["palavras"])
+        achado, score = verificar_item(texto_norm, item["palavras"])
+
         registro = {
             "id": item["id"],
             "grupo": item["grupo"],
             "nome": item["nome"],
             "icone": item["icone"],
+            "score": score,
         }
-        if achado:
+
+        if achado and score >= 70:
             encontrados.append(registro)
+        elif score >= 30 and score < 70:
+            incertos.append(registro)
         else:
             faltando.append(registro)
 
+    total_encontrados = len(encontrados)
+    total_incertos = len(incertos)
+    total_faltando = len(faltando)
+    total = len(CHECKLIST)
+
+    percentual = round(total_encontrados / total * 100)
+
+    aviso = None
+    if total_incertos > 0:
+        aviso = f"⚠️ {total_incertos} documento(s) com confiança baixa - revisar manualmente"
+
     return {
-        "total": len(CHECKLIST),
+        "total": total,
         "encontrados": encontrados,
+        "incertos": incertos,
         "faltando": faltando,
-        "percentual": round(len(encontrados) / len(CHECKLIST) * 100),
+        "percentual": percentual,
+        "aviso": aviso,
     }
-
-
-class handler(BaseHTTPRequestHandler):
-
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self._cors()
-        self.end_headers()
-
-    def do_POST(self):
-        try:
-            length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(length)
-
-            content_type = self.headers.get("Content-Type", "")
-
-            if "application/pdf" in content_type or body[:4] == b"%PDF":
-                texto = extrair_texto_pdf(body)
-            else:
-                # tenta decodificar como texto
-                texto = body.decode("utf-8", errors="ignore")
-
-            if not texto.strip():
-                self._responder(400, {"erro": "Não foi possível extrair texto do PDF."})
-                return
-
-            resultado = analisar(texto)
-            self._responder(200, resultado)
-
-        except Exception as e:
-            self._responder(500, {"erro": str(e)})
-
-    def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-
-    def _responder(self, status: int, dados: dict):
-        corpo = json.dumps(dados, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
-        self._cors()
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(corpo)))
-        self.end_headers()
-        self.wfile.write(corpo)
-
-    def log_message(self, *args):
-        pass

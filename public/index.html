@@ -464,6 +464,12 @@
     color: var(--text);
   }
 
+  .item-incerto {
+    background: rgba(245,166,35,0.06);
+    border-color: rgba(245,166,35,0.15);
+    color: var(--text);
+  }
+
   .item-no {
     background: rgba(240,80,110,0.06);
     border-color: rgba(240,80,110,0.15);
@@ -491,6 +497,11 @@
     color: var(--green);
   }
 
+  .item-incerto .item-status {
+    background: rgba(245,166,35,0.2);
+    color: var(--amber);
+  }
+
   .item-no .item-status {
     background: rgba(240,80,110,0.2);
     color: var(--red);
@@ -508,6 +519,12 @@
 
   .item-no .item-nome {
     color: rgba(232,234,240,0.7);
+  }
+
+  .item-score {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
   }
 
   /* ── Seções ── */
@@ -532,6 +549,7 @@
 
   .secao-titulo-ok { color: var(--green); }
   .secao-titulo-no { color: var(--red); }
+  .secao-titulo-aviso { color: var(--amber); }
 
   .secao-titulo::after {
     content: '';
@@ -647,6 +665,12 @@
     <!-- Alerta -->
     <div class="alert" id="alert-box"></div>
 
+    <!-- Incertos -->
+    <div class="secao" id="secao-incertos" style="display:none">
+      <div class="secao-titulo secao-titulo-aviso">⚠️ Documentos com confiança baixa (revisar manualmente)</div>
+      <div id="lista-incertos"></div>
+    </div>
+
     <!-- Faltando -->
     <div class="secao" id="secao-faltando" style="display:none">
       <div class="secao-titulo secao-titulo-no">❌ Documentos faltando</div>
@@ -757,12 +781,21 @@ function renderizar(d) {
 
   // Alerta
   const alertBox = document.getElementById('alert-box');
-  if (d.faltando.length === 0) {
+  if (d.faltando.length === 0 && d.incertos.length === 0) {
     alertBox.className = 'alert alert-success';
     alertBox.innerHTML = '<span class="alert-icon">🎉</span><span>Todos os documentos obrigatórios foram encontrados! Você está pronto para a entrega.</span>';
+  } else if (d.aviso) {
+    alertBox.className = 'alert alert-warning';
+    alertBox.innerHTML = `<span class="alert-icon">⚠️</span><span>${d.aviso}<br><strong>Dica:</strong> Alguns documentos têm confiança baixa. Verifique manualmente se eles estão corretos.</span>`;
   } else {
     alertBox.className = 'alert alert-warning';
     alertBox.innerHTML = `<span class="alert-icon">⚠️</span><span>Faltam <strong>${d.faltando.length}</strong> documento(s). Candidatos sem documentação completa serão <strong>desclassificados</strong> conforme item 3.1 do Edital 29/2024.</span>`;
+  }
+
+  // Incertos
+  if (d.incertos && d.incertos.length > 0) {
+    document.getElementById('secao-incertos').style.display = 'block';
+    renderLista('lista-incertos', d.incertos, 'incerto');
   }
 
   // Faltando
@@ -782,7 +815,7 @@ function renderizar(d) {
   document.getElementById('btn-analisar').disabled = false;
 }
 
-function renderLista(containerId, itens, ok) {
+function renderLista(containerId, itens, tipo) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
 
@@ -806,12 +839,18 @@ function renderLista(containerId, itens, ok) {
 
     lista.forEach((item, idx) => {
       const el = document.createElement('div');
-      el.className = `item ${ok ? 'item-ok' : 'item-no'}`;
+      const isOk = tipo === true;
+      const isIncerto = tipo === 'incerto';
+      el.className = `item ${isOk ? 'item-ok' : isIncerto ? 'item-incerto' : 'item-no'}`;
       el.style.animationDelay = (idx * 0.05) + 's';
+
+      let statusIcon = isOk ? '✓' : isIncerto ? '?' : '✗';
+      let scoreHtml = item.score !== undefined ? ` <span class="item-score">${item.score}%</span>` : '';
+
       el.innerHTML = `
-        <div class="item-status">${ok ? '✓' : '✗'}</div>
+        <div class="item-status">${statusIcon}</div>
         <span class="item-icone">${item.icone}</span>
-        <span class="item-nome">${item.nome}</span>
+        <span class="item-nome">${item.nome}${scoreHtml}</span>
       `;
       grupoEl.appendChild(el);
     });
@@ -828,6 +867,7 @@ function resetar() {
   document.getElementById('resultado').classList.remove('visible');
   document.getElementById('secao-faltando').style.display = 'none';
   document.getElementById('secao-encontrados').style.display = 'none';
+  document.getElementById('secao-incertos').style.display = 'none';
   document.getElementById('progress-bar').style.width = '0%';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
