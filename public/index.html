@@ -527,6 +527,16 @@
     font-family: 'DM Mono', monospace;
   }
 
+  .item-pagina {
+    font-size: 11px;
+    color: var(--blue);
+    font-family: 'DM Mono', monospace;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: var(--blue-dim);
+    border-radius: 4px;
+  }
+
   /* ── Seções ── */
   .secao {
     background: var(--surface);
@@ -846,11 +856,12 @@ function renderLista(containerId, itens, tipo) {
 
       let statusIcon = isOk ? '✓' : isIncerto ? '?' : '✗';
       let scoreHtml = item.score !== undefined ? ` <span class="item-score">${item.score}%</span>` : '';
+      let paginaHtml = item.pagina !== undefined ? ` <span class="item-pagina">📄 Página ${item.pagina}</span>` : '';
 
       el.innerHTML = `
         <div class="item-status">${statusIcon}</div>
         <span class="item-icone">${item.icone}</span>
-        <span class="item-nome">${item.nome}${scoreHtml}</span>
+        <span class="item-nome">${item.nome}${scoreHtml}${paginaHtml}</span>
       `;
       grupoEl.appendChild(el);
     });

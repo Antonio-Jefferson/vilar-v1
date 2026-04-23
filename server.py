@@ -18,12 +18,13 @@ class APIHandler(SimpleHTTPRequestHandler):
 
                 # Extrai texto do PDF
                 if body[:4] == b'%PDF':
-                    texto, erro = extrair_texto_pdf(body)
+                    paginas, erro = extrair_texto_pdf(body)
                 else:
                     texto = body.decode('utf-8', errors='ignore')
+                    paginas = [(texto, 1)]
                     erro = None
 
-                if not texto.strip():
+                if not paginas:
                     if erro:
                         msg = f'Erro ao extrair texto: {erro}'
                     else:
@@ -31,7 +32,7 @@ class APIHandler(SimpleHTTPRequestHandler):
                     self._responder(400, {'erro': msg})
                     return
 
-                resultado = analisar(texto)
+                resultado = analisar(paginas)
                 self._responder(200, resultado)
 
             except Exception as e:

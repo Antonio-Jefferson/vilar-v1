@@ -378,44 +378,102 @@ def verificar_item(texto_norm: str, palavras_grupos: list) -> tuple[bool, int]:
     return False, 0
 
 
-def processar_imagem_ocr(imagem):
-    """Melhora qualidade da imagem antes de OCR"""
+def processar_imagem_ocr(imagem_pil):
+    """Pipeline completo de pré-processamento para OCR de imagens escaneadas"""
+    try:
+        import cv2
+        import numpy as np
+        from PIL import Image
+
+        img = cv2.cvtColor(np.array(imagem_pil), cv2.COLOR_RGB2BGR)
+
+        # 1. Upscaling se imagem pequena
+        altura, largura = img.shape[:2]
+        if altura < 1000 or largura < 1000:
+            escala = max(1000 / altura, 1000 / largura)
+            img = cv2.resize(img, None, fx=escala, fy=escala, interpolation=cv2.INTER_CUBIC)
+
+        # 2. Converter para escala de cinza
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # 3. Denoising (remover ruído mantendo bordas)
+        denoised = cv2.fastNlMeansDenoising(gray, h=10, templateWindowSize=7, searchWindowSize=21)
+
+        # 4. Remover sombras e melhorar contraste com CLAHE
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(10, 10))
+        enhanced = clahe.apply(denoised)
+
+        # 5. Binarização automática com Otsu
+        _, binary = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        # 6. Remover bordas escuras (margens)
+        height, width = binary.shape
+        crop_top = int(height * 0.02)
+        crop_bottom = int(height * 0.02)
+        crop_left = int(width * 0.02)
+        crop_right = int(width * 0.02)
+        binary = binary[crop_top:height-crop_bottom, crop_left:width-crop_right]
+
+        # 7. Operações morfológicas para limpar
+        kernel_close = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+        kernel_open = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
+
+        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel_close)
+        binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel_open)
+
+        # 8. Corrigir skew (inclinação) do documento
+        binary = corrigir_inclinacao(binary)
+
+        # 9. Inverter cores se necessário (preto em branco)
+        if np.mean(binary) < 127:
+            binary = cv2.bitwise_not(binary)
+
+        return Image.fromarray(binary)
+
+    except Exception as e:
+        print(f"Erro no processamento: {e}")
+        return imagem_pil
+
+
+def corrigir_inclinacao(imagem):
+    """Corrige a inclinação/rotação da imagem escaneada"""
     try:
         import cv2
         import numpy as np
 
-        nparr = np.frombuffer(imagem, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if img is None:
+        coords = np.column_stack(np.where(imagem > 200))
+        if len(coords) < 10:
             return imagem
 
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        angle = cv2.minAreaRect(coords)[2]
+        if angle < -45:
+            angle = 90 + angle
 
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(gray)
+        if abs(angle) > 0.5:
+            h, w = imagem.shape
+            matriz_rotacao = cv2.getRotationMatrix2D((w/2, h/2), angle, 1.0)
+            imagem = cv2.warpAffine(imagem, matriz_rotacao, (w, h),
+                                   borderMode=cv2.BORDER_REPLICATE,
+                                   flags=cv2.INTER_CUBIC)
 
-        _, thresh = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2,2))
-        cleaned = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-
-        return cleaned
+        return imagem
     except:
         return imagem
 
 
-def extrair_texto_pdf(conteudo_bytes: bytes) -> tuple[str, str]:
+def extrair_texto_pdf(conteudo_bytes: bytes) -> tuple[list, str]:
+    """Extrai texto página por página, retorna lista de (texto, número_página)"""
     try:
         import fitz
         doc = fitz.open(stream=conteudo_bytes, filetype="pdf")
-        partes = []
-        for pagina in doc:
-            partes.append(pagina.get_text())
+        paginas = []
+        for idx, pagina in enumerate(doc, 1):
+            texto = pagina.get_text()
+            if texto.strip():
+                paginas.append((texto, idx))
         doc.close()
-        texto = "\n".join(partes)
-        if texto.strip():
-            return texto, None
+        if paginas:
+            return paginas, None
     except ImportError as e:
         pass
     except Exception as e:
@@ -424,55 +482,69 @@ def extrair_texto_pdf(conteudo_bytes: bytes) -> tuple[str, str]:
     try:
         import pypdf
         reader = pypdf.PdfReader(stream=conteudo_bytes)
-        partes = []
-        for page in reader.pages:
-            partes.append(page.extract_text())
-        texto = "\n".join(partes)
-        if texto.strip():
-            return texto, None
+        paginas = []
+        for idx, page in enumerate(reader.pages, 1):
+            texto = page.extract_text()
+            if texto.strip():
+                paginas.append((texto, idx))
+        if paginas:
+            return paginas, None
     except Exception as e:
         pass
 
     try:
         import pdf2image
         import pytesseract
-        from io import BytesIO
 
-        images = pdf2image.convert_from_bytes(conteudo_bytes)
-        partes = []
-        for img in images:
-            texto_ocr = pytesseract.image_to_string(img, lang='por')
-            partes.append(texto_ocr)
-        texto = "\n".join(partes)
-        if texto.strip():
-            return texto, None
-        return "", "OCR não encontrou texto no PDF"
+        images = pdf2image.convert_from_bytes(conteudo_bytes, dpi=300)
+        paginas = []
+        for idx, img in enumerate(images, 1):
+            img_processada = processar_imagem_ocr(img)
+            texto_ocr = pytesseract.image_to_string(img_processada, lang='por', config='--psm 3')
+            if texto_ocr.strip():
+                paginas.append((texto_ocr, idx))
+        if paginas:
+            return paginas, None
+        return [], "OCR não encontrou texto no PDF (tente melhorar a qualidade da imagem)"
     except ImportError:
-        return "", "Instale: pip install pdf2image pytesseract. Também instale tesseract-ocr: apt-get install tesseract-ocr"
+        return [], "Instale: pip install pdf2image pytesseract. Também instale tesseract-ocr: apt-get install tesseract-ocr"
     except Exception as e:
-        return "", f"OCR error: {str(e)}"
+        return [], f"OCR error: {str(e)}"
 
 
-def analisar(texto: str) -> dict:
-    texto_norm = normalizar(texto)
+def analisar(paginas_texto: list) -> dict:
+    """Analisa páginas de texto retornando documentos encontrados com páginas"""
     encontrados = []
     faltando = []
     incertos = []
 
     for item in CHECKLIST:
-        achado, score = verificar_item(texto_norm, item["palavras"])
+        melhor_score = 0
+        pagina_encontrada = None
+
+        for texto, num_pagina in paginas_texto:
+            texto_norm = normalizar(texto)
+            achado, score = verificar_item(texto_norm, item["palavras"])
+
+            if score > melhor_score:
+                melhor_score = score
+                if score > 0:
+                    pagina_encontrada = num_pagina
 
         registro = {
             "id": item["id"],
             "grupo": item["grupo"],
             "nome": item["nome"],
             "icone": item["icone"],
-            "score": score,
+            "score": melhor_score,
         }
 
-        if achado and score >= 70:
+        if pagina_encontrada:
+            registro["pagina"] = pagina_encontrada
+
+        if melhor_score >= 70:
             encontrados.append(registro)
-        elif score >= 30 and score < 70:
+        elif melhor_score >= 30 and melhor_score < 70:
             incertos.append(registro)
         else:
             faltando.append(registro)

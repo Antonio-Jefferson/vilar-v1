@@ -55,9 +55,9 @@ class DevHandler(BaseHTTPRequestHandler):
                 body = self.rfile.read(content_length)
 
                 # Extrai texto do PDF
-                texto, erro = extrair_texto_pdf(body)
+                paginas, erro = extrair_texto_pdf(body)
 
-                if not texto.strip():
+                if not paginas:
                     if erro:
                         msg = f'Erro ao extrair texto: {erro}'
                     else:
@@ -66,7 +66,7 @@ class DevHandler(BaseHTTPRequestHandler):
                     return
 
                 # Analisa o texto
-                resultado = analisar(texto)
+                resultado = analisar(paginas)
                 self._responder(200, resultado)
 
             except Exception as e:

@@ -59,10 +59,11 @@ class Handler(BaseHTTPRequestHandler):
                 print(f'[API] Recebido PDF de {content_length} bytes')
 
                 # Extrai texto
-                texto, erro = extrair_texto_pdf(body)
-                print(f'[API] Texto extraído: {len(texto)} caracteres')
+                paginas, erro = extrair_texto_pdf(body)
+                total_chars = sum(len(texto) for texto, _ in paginas)
+                print(f'[API] Texto extraído: {total_chars} caracteres de {len(paginas)} página(s)')
 
-                if not texto.strip():
+                if not paginas:
                     if erro:
                         msg = f'Erro ao extrair texto: {erro}'
                     else:
@@ -72,7 +73,7 @@ class Handler(BaseHTTPRequestHandler):
                     return
 
                 # Analisa
-                resultado = analisar(texto)
+                resultado = analisar(paginas)
                 print(f'[API] Análise concluída: {resultado["percentual"]}%')
 
                 self.send_json(200, resultado)
