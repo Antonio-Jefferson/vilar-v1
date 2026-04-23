@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Verificador SEDUC-MA · Edital 29/2024</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #13161e;
+    --surface2:  #1a1e28;
+    --border:    #252935;
+    --border2:   #2f3545;
+    --text:      #e8eaf0;
+    --muted:     #7a8099;
+    --green:     #22c98a;
+    --green-dim: #0f3d2a;
+    --red:       #f0506e;
+    --red-dim:   #3d1020;
+    --amber:     #f5a623;
+    --amber-dim: #3d2a0a;
+    --blue:      #4a9eff;
+    --blue-dim:  #0d2440;
+    --accent:    #3d6cff;
+    --accent2:   #5a82ff;
+    --radius:    12px;
+    --radius-lg: 20px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background grid ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -30%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(61,108,255,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout ── */
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 20px 80px;
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    padding: 64px 0 48px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--blue-dim);
+    border: 1px solid rgba(74,158,255,0.3);
+    color: var(--blue);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    padding: 5px 14px;
+    border-radius: 100px;
+    margin-bottom: 24px;
+    text-transform: uppercase;
+  }
+
+  .badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--blue);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent2);
+  }
+
+  .subtitle {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  /* ── Upload Zone ── */
+  .upload-zone {
+    margin: 40px 0;
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    padding: 56px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(61,108,255,0.06), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .upload-zone:hover,
+  .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--surface2);
+  }
+
+  .upload-zone:hover::before,
+  .upload-zone.drag-over::before {
+    opacity: 1;
+  }
+
+  .upload-zone.drag-over {
+    transform: scale(1.01);
+  }
+
+  .upload-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: var(--blue-dim);
+    border: 1px solid rgba(74,158,255,0.25);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    transition: transform 0.3s;
+  }
+
+  .upload-zone:hover .upload-icon {
+    transform: translateY(-4px);
+  }
+
+  .upload-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .upload-hint {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+
+  .btn-upload {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px 28px;
+    border-radius: 100px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-upload:hover {
+    background: var(--accent2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(61,108,255,0.35);
+  }
+
+  #file-input { display: none; }
+
+  .file-info {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+    padding: 12px 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    font-size: 13px;
+  }
+
+  .file-info.visible { display: flex; }
+  .file-name { color: var(--text); font-weight: 500; flex: 1; text-align: left; }
+  .file-size { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  /* ── Botão analisar ── */
+  .btn-analisar {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, var(--accent), #6a4dff);
+    color: #fff;
+    font-family: 'Sora', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.25s;
+    letter-spacing: 0.03em;
+    display: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-analisar.visible { display: block; }
+  .btn-analisar:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(61,108,255,0.4);
+  }
+  .btn-analisar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* ── Loading ── */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 48px;
+  }
+
+  .loading.visible { display: block; }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    color: var(--muted);
+    font-size: 14px;
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+  /* ── Resultado ── */
+  #resultado { display: none; animation: fadeUp 0.5s ease; }
+  #resultado.visible { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Progress Card ── */
+  .progress-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .progress-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), #6a4dff, var(--green));
+  }
+
+  .progress-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .progress-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    color: var(--text);
+  }
+
+  .progress-pct {
+    font-family: 'DM Serif Display', serif;
+    font-size: 3rem;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent2), var(--green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .progress-bar-wrap {
+    background: var(--border);
+    border-radius: 100px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    width: 0%;
+  }
+
+  .progress-counts {
+    display: flex;
+    gap: 24px;
+    font-size: 13px;
+  }
+
+  .count-ok  { color: var(--green); }
+  .count-no  { color: var(--red); }
+
+  .count-ok::before { content: '✓ '; font-weight: 700; }
+  .count-no::before { content: '✗ '; font-weight: 700; }
+
+  /* ── Alerta ── */
+  .alert {
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .alert-success {
+    background: var(--green-dim);
+    border: 1px solid rgba(34,201,138,0.3);
+    color: var(--green);
+  }
+
+  .alert-warning {
+    background: var(--red-dim);
+    border: 1px solid rgba(240,80,110,0.3);
+    color: var(--red);
+  }
+
+  .alert-icon { font-size: 18px; flex-shrink: 0; }
+
+  /* ── Grupos ── */
+  .grupo {
+    margin-bottom: 20px;
+  }
+
+  .grupo-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .grupo-nome {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+
+  .grupo-badge {
+    margin-left: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 100px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+
+  /* ── Itens ── */
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    margin-bottom: 6px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    font-size: 14px;
+    animation: slideIn 0.4s ease both;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .item-ok {
+    background: rgba(34,201,138,0.06);
+    border-color: rgba(34,201,138,0.15);
+    color: var(--text);
+  }
+
+  .item-no {
+    background: rgba(240,80,110,0.06);
+    border-color: rgba(240,80,110,0.15);
+    color: var(--text);
+  }
+
+  .item:hover {
+    transform: translateX(4px);
+  }
+
+  .item-status {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .item-ok .item-status {
+    background: rgba(34,201,138,0.2);
+    color: var(--green);
+  }
+
+  .item-no .item-status {
+    background: rgba(240,80,110,0.2);
+    color: var(--red);
+  }
+
+  .item-icone {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .item-nome {
+    flex: 1;
+    line-height: 1.4;
+  }
+
+  .item-no .item-nome {
+    color: rgba(232,234,240,0.7);
+  }
+
+  /* ── Seções ── */
+  .secao {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+
+  .secao-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .secao-titulo-ok { color: var(--green); }
+  .secao-titulo-no { color: var(--red); }
+
+  .secao-titulo::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Botão novo ── */
+  .btn-novo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 16px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+
+  .btn-novo:hover {
+    color: var(--text);
+    border-color: var(--accent);
+    background: var(--surface);
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 40px 0 20px;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── Responsivo ── */
+  @media (max-width: 600px) {
+    .upload-zone { padding: 36px 20px; }
+    .progress-header { flex-direction: column; }
+    .progress-pct { font-size: 2.4rem; }
+    h1 { font-size: 1.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="badge">🔒 análise 100% local · sem IA</div>
+    <h1>Verificador de<br><em>Documentos</em> SEDUC-MA</h1>
+    <p class="subtitle">
+      Analise seu PDF e descubra exatamente quais documentos
+      estão prontos e quais ainda faltam para o Edital 29/2024.
+    </p>
+  </header>
+
+  <!-- Upload -->
+  <div class="upload-zone" id="drop-zone">
+    <div class="upload-icon">📂</div>
+    <div class="upload-title">Arraste seu PDF aqui</div>
+    <div class="upload-hint">ou clique para selecionar o arquivo</div>
+    <button class="btn-upload" onclick="document.getElementById('file-input').click()">
+      Selecionar PDF
+    </button>
+    <input type="file" id="file-input" accept=".pdf" />
+
+    <div class="file-info" id="file-info">
+      <span style="font-size:20px">📄</span>
+      <span class="file-name" id="file-name">—</span>
+      <span class="file-size" id="file-size">—</span>
+    </div>
+  </div>
+
+  <button class="btn-analisar" id="btn-analisar" onclick="analisar()">
+    🔍 &nbsp;Analisar Documentos
+  </button>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text">Lendo e verificando o PDF…</div>
+  </div>
+
+  <!-- Resultado -->
+  <div id="resultado">
+
+    <!-- Progress card -->
+    <div class="progress-card">
+      <div class="progress-header">
+        <div>
+          <div class="progress-title">Resultado da análise</div>
+          <div class="progress-counts">
+            <span class="count-ok" id="count-ok">0 documentos</span>
+            <span class="count-no" id="count-no">0 faltando</span>
+          </div>
+        </div>
+        <div class="progress-pct" id="progress-pct">0%</div>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- Alerta -->
+    <div class="alert" id="alert-box"></div>
+
+    <!-- Faltando -->
+    <div class="secao" id="secao-faltando" style="display:none">
+      <div class="secao-titulo secao-titulo-no">❌ Documentos faltando</div>
+      <div id="lista-faltando"></div>
+    </div>
+
+    <!-- Encontrados -->
+    <div class="secao" id="secao-encontrados" style="display:none">
+      <div class="secao-titulo secao-titulo-ok">✅ Documentos encontrados</div>
+      <div id="lista-encontrados"></div>
+    </div>
+
+    <button class="btn-novo" onclick="resetar()">
+      ↩ Analisar outro PDF
+    </button>
+
+  </div>
+
+</div>
+
+<footer>
+  Edital 29/2024 · SEDUC-MA · verificação por palavras-chave · nenhum dado enviado a terceiros
+</footer>
+
+<script>
+let arquivoAtual = null;
+
+// ── Drag & Drop ──────────────────────────────────────────────────
+const zona = document.getElementById('drop-zone');
+
+zona.addEventListener('dragover', e => { e.preventDefault(); zona.classList.add('drag-over'); });
+zona.addEventListener('dragleave', () => zona.classList.remove('drag-over'));
+zona.addEventListener('drop', e => {
+  e.preventDefault();
+  zona.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') definirArquivo(f);
+});
+
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) definirArquivo(e.target.files[0]);
+});
+
+zona.addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+});
+
+function definirArquivo(f) {
+  arquivoAtual = f;
+  document.getElementById('file-name').textContent = f.name;
+  document.getElementById('file-size').textContent = formatBytes(f.size);
+  document.getElementById('file-info').classList.add('visible');
+  document.getElementById('btn-analisar').classList.add('visible');
+  document.getElementById('resultado').classList.remove('visible');
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/(1024*1024)).toFixed(1) + ' MB';
+}
+
+// ── Análise ──────────────────────────────────────────────────────
+async function analisar() {
+  if (!arquivoAtual) return;
+
+  document.getElementById('btn-analisar').disabled = true;
+  document.getElementById('loading').classList.add('visible');
+  document.getElementById('resultado').classList.remove('visible');
+
+  try {
+    const resp = await fetch('/api/analisar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/pdf' },
+      body: arquivoAtual,
+    });
+
+    const dados = await resp.json();
+    if (!resp.ok) throw new Error(dados.erro || 'Erro desconhecido');
+    renderizar(dados);
+  } catch(err) {
+    document.getElementById('loading').classList.remove('visible');
+    document.getElementById('btn-analisar').disabled = false;
+    alert('Erro ao analisar: ' + err.message);
+  }
+}
+
+// ── Renderizar ───────────────────────────────────────────────────
+function renderizar(d) {
+  document.getElementById('loading').classList.remove('visible');
+
+  // Progress
+  document.getElementById('progress-pct').textContent = d.percentual + '%';
+  document.getElementById('count-ok').textContent = d.encontrados.length + ' encontrado' + (d.encontrados.length !== 1 ? 's' : '');
+  document.getElementById('count-no').textContent = d.faltando.length + ' faltando';
+
+  setTimeout(() => {
+    document.getElementById('progress-bar').style.width = d.percentual + '%';
+  }, 100);
+
+  // Alerta
+  const alertBox = document.getElementById('alert-box');
+  if (d.faltando.length === 0) {
+    alertBox.className = 'alert alert-success';
+    alertBox.innerHTML = '<span class="alert-icon">🎉</span><span>Todos os documentos obrigatórios foram encontrados! Você está pronto para a entrega.</span>';
+  } else {
+    alertBox.className = 'alert alert-warning';
+    alertBox.innerHTML = `<span class="alert-icon">⚠️</span><span>Faltam <strong>${d.faltando.length}</strong> documento(s). Candidatos sem documentação completa serão <strong>desclassificados</strong> conforme item 3.1 do Edital 29/2024.</span>`;
+  }
+
+  // Faltando
+  if (d.faltando.length > 0) {
+    document.getElementById('secao-faltando').style.display = 'block';
+    renderLista('lista-faltando', d.faltando, false);
+  }
+
+  // Encontrados
+  if (d.encontrados.length > 0) {
+    document.getElementById('secao-encontrados').style.display = 'block';
+    renderLista('lista-encontrados', d.encontrados, true);
+  }
+
+  document.getElementById('resultado').classList.add('visible');
+  document.getElementById('resultado').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('btn-analisar').disabled = false;
+}
+
+function renderLista(containerId, itens, ok) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+
+  // Agrupa por grupo
+  const grupos = {};
+  itens.forEach(i => {
+    if (!grupos[i.grupo]) grupos[i.grupo] = [];
+    grupos[i.grupo].push(i);
+  });
+
+  Object.entries(grupos).forEach(([grupo, lista]) => {
+    const grupoEl = document.createElement('div');
+    grupoEl.className = 'grupo';
+
+    grupoEl.innerHTML = `
+      <div class="grupo-header">
+        <span class="grupo-nome">${grupo}</span>
+        <span class="grupo-badge">${lista.length}</span>
+      </div>
+    `;
+
+    lista.forEach((item, idx) => {
+      const el = document.createElement('div');
+      el.className = `item ${ok ? 'item-ok' : 'item-no'}`;
+      el.style.animationDelay = (idx * 0.05) + 's';
+      el.innerHTML = `
+        <div class="item-status">${ok ? '✓' : '✗'}</div>
+        <span class="item-icone">${item.icone}</span>
+        <span class="item-nome">${item.nome}</span>
+      `;
+      grupoEl.appendChild(el);
+    });
+
+    container.appendChild(grupoEl);
+  });
+}
+
+function resetar() {
+  arquivoAtual = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('file-info').classList.remove('visible');
+  document.getElementById('btn-analisar').classList.remove('visible');
+  document.getElementById('resultado').classList.remove('visible');
+  document.getElementById('secao-faltando').style.display = 'none';
+  document.getElementById('secao-encontrados').style.display = 'none';
+  document.getElementById('progress-bar').style.width = '0%';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
