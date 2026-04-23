@@ -351,6 +351,16 @@ def extrair_texto_pdf(conteudo_bytes: bytes) -> str:
             partes.append(pagina.get_text())
         doc.close()
         return "\n".join(partes)
+    except ImportError:
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(stream=conteudo_bytes)
+            partes = []
+            for page in reader.pages:
+                partes.append(page.extract_text())
+            return "\n".join(partes)
+        except:
+            return ""
     except Exception as e:
         return ""
 
