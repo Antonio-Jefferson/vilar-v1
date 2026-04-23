@@ -722,8 +722,18 @@ async function analisar() {
       body: arquivoAtual,
     });
 
+    if (!resp.ok) {
+      let errorMsg = 'Erro desconhecido';
+      try {
+        const errorData = await resp.json();
+        errorMsg = errorData.erro || errorMsg;
+      } catch {
+        errorMsg = `Erro ${resp.status}: ${resp.statusText}`;
+      }
+      throw new Error(errorMsg);
+    }
+
     const dados = await resp.json();
-    if (!resp.ok) throw new Error(dados.erro || 'Erro desconhecido');
     renderizar(dados);
   } catch(err) {
     document.getElementById('loading').classList.remove('visible');
